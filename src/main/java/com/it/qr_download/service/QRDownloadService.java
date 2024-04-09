@@ -8,7 +8,6 @@ import com.google.zxing.qrcode.QRCodeWriter;
 import com.it.qr_download.config.FileStorageProperties;
 import com.it.qr_download.exception.FileNotFoundException;
 import com.it.qr_download.exception.FileStorageException;
-import jakarta.validation.Path;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -17,6 +16,20 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @Service
 @Slf4j
@@ -58,8 +71,8 @@ public class QRDownloadService {
         return resources;
     }
 
-    public ByteArrayOutputStream generateQR(List<Resource> resources, OutputStream outputStream) throws IOException {
-        ByteArrayOutputStream zipOutputStream = new ByteArrayOutputStream();
+    public ByteArrayOutputStream generateQR(List<Resource> resources) throws IOException {
+sta        ByteArrayOutputStream zipOutputStream = new ByteArrayOutputStream();
 
         // Crea un oggetto ZipOutputStream per scrivere i file ZIP
         try (ZipOutputStream zipOut = new ZipOutputStream(zipOutputStream)) {
@@ -73,7 +86,7 @@ public class QRDownloadService {
 
                     // Genera il codice QR
                     QRCodeWriter qrCodeWriter = new QRCodeWriter();
-                    BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, 200, 200);
+                    BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, 2000, 2000);
 
                     // Salva il codice QR come immagine PNG
                     String qrCodeFileName = "codice_qr_" + UUID.randomUUID().toString() + ".png";
@@ -101,7 +114,7 @@ public class QRDownloadService {
 
     public File createFileFromMultipart(MultipartFile multipartFile) {
         try {
-            File file = new File(fileStorageLocation + multipartFile.getOriginalFilename());
+            File file = new File(fileStorageLocation+"\\" + multipartFile.getOriginalFilename());
             FileOutputStream fileOutputStream = new FileOutputStream(file);
             fileOutputStream.write(multipartFile.getBytes());
             fileOutputStream.flush();
