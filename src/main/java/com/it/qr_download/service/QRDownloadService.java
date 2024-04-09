@@ -17,14 +17,11 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -72,7 +69,7 @@ public class QRDownloadService {
     }
 
     public ByteArrayOutputStream generateQR(List<Resource> resources) throws IOException {
-sta        ByteArrayOutputStream zipOutputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream zipOutputStream = new ByteArrayOutputStream();
 
         // Crea un oggetto ZipOutputStream per scrivere i file ZIP
         try (ZipOutputStream zipOut = new ZipOutputStream(zipOutputStream)) {
