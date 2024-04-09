@@ -30,13 +30,17 @@ public class QRDownloadController {
     @GetMapping("/generate")
     @ResponseBody
     public ResponseEntity<Resource> downloadFile(HttpServletRequest request) throws IOException {
-        List<Resource> resources = service.loadFilesAsResources();
+        List<File> files = service.loadFiles();
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentDispositionFormData("attachment", "qr_codes.zip");
 
-        ByteArrayResource zipResource = new ByteArrayResource(service.generateQR(resources).toByteArray());
+        ByteArrayResource zipResource = new ByteArrayResource(service.generateQR(files).toByteArray());
+
+        for(File file : files) {
+            file.delete();
+        }
 
         return ResponseEntity.ok()
                 .headers(headers)

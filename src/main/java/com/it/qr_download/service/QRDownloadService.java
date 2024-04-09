@@ -1,6 +1,7 @@
 package com.it.qr_download.service;
 
 import com.google.zxing.BarcodeFormat;
+import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
@@ -17,6 +18,8 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -46,65 +49,51 @@ public class QRDownloadService {
         }
     }
 
-    public List<Resource> loadFilesAsResources() {
-        List<Resource> resources = new ArrayList<>();
+    public List<File> loadFiles() {
+        List<File> files = new ArrayList<>();
         try {
-            Path directoryPath = this.fileStorageLocation.normalize();
-            if (Files.isDirectory(directoryPath)) {
-                try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(directoryPath)) {
-                    for (Path filePath : directoryStream) {
-                        Resource resource = new UrlResource(filePath.toUri());
-                        if (resource.exists()) {
-                            resources.add(resource);
+            File directory = this.fileStorageLocation.toFile();
+            if (directory.isDirectory()) {
+                File[] fileList = directory.listFiles();
+                if (fileList != null) {
+                    for (File file : fileList) {
+                        if (file.isFile()) {
+                            files.add(file);
                         }
                     }
                 }
             } else {
-                throw new FileNotFoundException("Not a directory: " + directoryPath);
+                throw new IllegalArgumentException("Not a directory: " + directory.getAbsolutePath());
             }
         } catch (Exception ex) {
             throw new RuntimeException("Failed to load files from storage location", ex);
         }
-        return resources;
+        return files;
     }
 
-    public ByteArrayOutputStream generateQR(List<Resource> resources) throws IOException {
+    public ByteArrayOutputStream generateQR(List<File> files) throws IOException {
         ByteArrayOutputStream zipOutputStream = new ByteArrayOutputStream();
 
-        // Crea un oggetto ZipOutputStream per scrivere i file ZIP
         try (ZipOutputStream zipOut = new ZipOutputStream(zipOutputStream)) {
-            for (Resource resource : resources) {
+            for (File file : files) {
                 try {
-                    // Estrai il testo dal PDF
-                    PDDocument document = PDDocument.load(resource.getInputStream());
-                    PDFTextStripper pdfStripper = new PDFTextStripper();
-                    String text = pdfStripper.getText(document);
-                    document.close();
+                    // Genera il codice QR per il file corrente
+                    MultiFormatWriter writer = new MultiFormatWriter();
+                    BitMatrix bitMatrix = writer.encode("file:///" + file.getAbsolutePath(), BarcodeFormat.QR_CODE, 800, 800);
+                    BufferedImage image = MatrixToImageWriter.toBufferedImage(bitMatrix);
 
-                    // Genera il codice QR
-                    QRCodeWriter qrCodeWriter = new QRCodeWriter();
-                    BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, 2000, 2000);
+                    // Crea un nome univoco per il file PNG
+                    String fileName = file.getName()+"_"+UUID.randomUUID().toString() + ".png";
 
-                    // Salva il codice QR come immagine PNG
-                    String qrCodeFileName = "codice_qr_" + UUID.randomUUID().toString() + ".png";
-                    File qrCodeFile = new File(qrCodeFileName);
-                    MatrixToImageWriter.writeToPath(bitMatrix, "PNG", qrCodeFile.toPath());
-
-                    // Aggiunge il file al file ZIP
-                    zipOut.putNextEntry(new ZipEntry(qrCodeFileName));
-                    Files.copy(qrCodeFile.toPath(), zipOut);
+                    // Aggiunge il file PNG al file ZIP
+                    zipOut.putNextEntry(new ZipEntry(fileName));
+                    ImageIO.write(image, "PNG", zipOut);
                     zipOut.closeEntry();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (WriterException e) {
-                    throw new RuntimeException(e);
+                } catch (IOException | WriterException e) {
+                    log.error(e.getLocalizedMessage());
                 }
             }
         }
-
-        // Flush e chiude lo stream ZIP
-        zipOutputStream.flush();
-        zipOutputStream.close();
 
         return zipOutputStream;
     }
